@@ -1,1 +1,1 @@
-This is a place to track the changes that were made to original files (either existing phenotype data or data that was uploaded by individual contributors). 
+This is a place to track the changes that were made to original files (either existing phenotype data or data that was uploaded by individual contributors) for the purposes of cross-project phenotype harmonization in AMP-AD. 
