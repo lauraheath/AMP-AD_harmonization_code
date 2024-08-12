@@ -200,3 +200,19 @@ harmonized_mayo1 <- mayo %>%
                             mayoDx == "pathological aging"|mayoDx == "progressive supranuclear palsy" ~ "Other",
                             TRUE ~ mayoDx)
   )
+
+
+#save files:
+write.csv(harmonized_rosmap1, file="ROSMAP_individual_harmonized.csv", row.names=FALSE)
+file <- synapser::File(path="ROSMAP_clinical_harmonized.csv", parentId='')
+file <- synapser::synStore(file)
+
+write.csv(harmonized_mayo1, file="MAYO_individual_harmonized.csv", row.names=FALSE)
+file <- synapser::File(path="MAYO_clinical_harmonized.csv", parentId='')
+file <- synapser::synStore(file)
+
+write.csv(harmonized_mssm, file="MSBB_individual_harmonized.csv", row.names=FALSE)
+file <- synapser::File(path="MSBB_clinical_harmonized.csv", parentId='')
+file <- synapser::synStore(file)
+
+
