@@ -30,9 +30,13 @@ rosmap['dataContributionGroup'] <- 'Rush'
 rosmap['amyThal'] <- 'missing or unknown'
 rosmap['amyA'] <- 'missing or unknown'
 rosmap['mayoDx'] <- 'not applicable'
+rosmap['amyAny'] <- 'missing or unknown'
+rosmap['bScore'] <- 'missing or unknown'
+rosmap['reag'] <- 'missing or unknown'
+rosmap['ADoutcome'] <- 'missing or unknown'
 
 #get rid of unnecessary columns
-rosmap$projid<-NULL
+#rosmap$projid<-NULL
 rosmap$educ<-NULL
 rosmap$age_at_visit_max<-NULL
 rosmap$age_first_ad_dx<-NULL
@@ -79,6 +83,52 @@ harmonized_rosmap1 <- rosmap %>%
   )
 
 
+#amyAny (binary flag for presence of any amyloid via CERAD score, so will be missing for individuals without cerad)
+harmonized_rosmap1$amyAny[is.na(harmonized_rosmap1$amyAny)] <- 'missing or unknown'
+harmonized_rosmap1$amyAny[harmonized_rosmap1$amyCerad == 'missing or unknown'] <- 'missing or unknown'
+harmonized_rosmap1$amyAny[harmonized_rosmap1$amyCerad == 'None/No AD/C0'] <- 0
+harmonized_rosmap1$amyAny[harmonized_rosmap1$amyCerad == 'Sparse/Possible/C1' | harmonized_rosmap1$amyCerad == 'Moderate/Probable/C2' | harmonized_rosmap1$amyCerad == 'Frequent/Definite/C3'] <- 1
+
+#bScore (grouped Braak variable)
+harmonized_rosmap1$bScore[harmonized_rosmap1$Braak == 'None'] <- 'None'
+harmonized_rosmap1$bScore[harmonized_rosmap1$Braak == 'Stage I' | harmonized_rosmap1$Braak == 'Stage II'] <- 'Braak Stage I-II'
+harmonized_rosmap1$bScore[harmonized_rosmap1$Braak == 'Stage III' | harmonized_rosmap1$Braak == 'Stage IV'] <- 'Braak Stage III-IV'
+harmonized_rosmap1$bScore[harmonized_rosmap1$Braak == 'Stage V' | harmonized_rosmap1$Braak == 'Stage VI'] <- 'Braak Stage V-VI'
+harmonized_rosmap1$bScore[harmonized_rosmap1$Braak == 'missing or unknown'] <- 'missing or unknown'
+harmonized_rosmap1$bScore[is.na(harmonized_rosmap1$bScore)] <- 'missing or unknown'
+
+#reag (NIA Reagan, per backtranslated Rush thresholds)
+#individuals missing either amyCerad or Braak will be missing this variable
+harmonized_rosmap1$reag[harmonized_rosmap1$amyCerad == 'Frequent/Definite/C3' & (harmonized_rosmap1$Braak == 'Stage V' | harmonized_rosmap1$Braak == 'Stage VI')] <- 'High Likelihood'
+harmonized_rosmap1$reag[harmonized_rosmap1$amyCerad == 'Frequent/Definite/C3' & (harmonized_rosmap1$Braak == 'Stage I' | harmonized_rosmap1$Braak == 'Stage II' | harmonized_rosmap1$Braak == 'Stage III' | harmonized_rosmap1$Braak == 'Stage IV')] <- 'Intermediate Likelihood'
+harmonized_rosmap1$reag[harmonized_rosmap1$amyCerad == 'Moderate/Probable/C2' & (harmonized_rosmap1$Braak == 'Stage III' | harmonized_rosmap1$Braak == 'Stage IV' | harmonized_rosmap1$Braak == 'Stage V' | harmonized_rosmap1$Braak == 'Stage VI')] <- 'Intermediate Likelihood'
+harmonized_rosmap1$reag[harmonized_rosmap1$amyCerad == 'Sparse/Possible/C1' & (harmonized_rosmap1$Braak == 'None' | harmonized_rosmap1$Braak == 'Stage I' | harmonized_rosmap1$Braak == 'Stage II' | harmonized_rosmap1$Braak == 'Stage III' | harmonized_rosmap1$Braak == 'Stage IV' | harmonized_rosmap1$Braak == 'Stage V')] <- 'Low Likelihood'
+harmonized_rosmap1$reag[harmonized_rosmap1$amyCerad == 'Moderate/Probable/C2' & (harmonized_rosmap1$Braak == 'None' | harmonized_rosmap1$Braak == 'Stage I' | harmonized_rosmap1$Braak == 'Stage II')] <- 'Low Likelihood'
+harmonized_rosmap1$reag[harmonized_rosmap1$amyCerad == 'None/No AD/C0' & (harmonized_rosmap1$Braak == 'Stage I' | harmonized_rosmap1$Braak == 'Stage II' | harmonized_rosmap1$Braak == 'Stage III' | harmonized_rosmap1$Braak == 'Stage IV' | harmonized_rosmap1$Braak == 'Stage VI')] <- 'Low Likelihood'
+harmonized_rosmap1$reag[harmonized_rosmap1$amyCerad == 'Frequent/Definite/C3' & harmonized_rosmap1$Braak == 'None'] <- 'Low Likelihood'
+harmonized_rosmap1$reag[harmonized_rosmap1$amyCerad == 'None/No AD/C0' & harmonized_rosmap1$Braak == 'None'] <- 'No AD'
+harmonized_rosmap1$reag[harmonized_rosmap1$amyCerad == 'missing or unknown' | harmonized_rosmap1$Braak == 'missing or unknown'] <- 'missing or unknown'
+table(harmonized_rosmap1$reag)
+
+#AD outcome (derived outcome)
+#non-Mayo individuals missing cerad or braak will be missing or unknown
+harmonized_rosmap1$ADoutcome <- 'Other'
+harmonized_rosmap1$ADoutcome[harmonized_rosmap1$amyCerad == 'missing or unknown'] <- 'missing or unknown'
+harmonized_rosmap1$ADoutcome[harmonized_rosmap1$Braak == 'missing or unknown'] <- 'missing or unknown'
+harmonized_rosmap1$ADoutcome[(harmonized_rosmap1$amyCerad == 'Frequent/Definite/C3' | harmonized_rosmap1$amyCerad == 'Moderate/Probable/C2') & (harmonized_rosmap1$Braak == 'Stage IV' | harmonized_rosmap1$Braak == 'Stage V' | harmonized_rosmap1$Braak == 'Stage VI')] <- 'AD'
+harmonized_rosmap1$ADoutcome[(harmonized_rosmap1$amyCerad == 'None/No AD/C0' | harmonized_rosmap1$amyCerad == 'Sparse/Possible/C1') & (harmonized_rosmap1$Braak == 'None' |harmonized_rosmap1$Braak == 'Stage I' | harmonized_rosmap1$Braak == 'Stage II' | harmonized_rosmap1$Braak == 'Stage III')] <- 'Control'
+
+#change the order of the columns to match the Diverse Cohorts metadata schema
+harmonized_rosmap1 <- harmonized_rosmap1[,c("individualID", "projid", "dataContributionGroup", "cohort", "sex", "race", "isHispanic", "ageDeath",
+                            "PMI", "apoeGenotype", "amyThal", "amyA", "amyCerad",  "Braak", "mayoDx", "amyAny", "bScore", "reag", "ADoutcome")]
+
+#save files:
+write.csv(harmonized_rosmap1, file="ROSMAP_clinical_harmonized_to_DivCohorts.csv", row.names=FALSE)
+file <- synapser::File(path="ROSMAP_clinical_harmonized_to_DivCohorts.csv", parentId='syn61843440')
+file <- synapser::synStore(file)
+
+
+
 
 
 
@@ -94,6 +144,11 @@ mssm['cohort'] <- 'Mt Sinai Brain Bank'
 mssm['amyThal'] <- 'missing or unknown'
 mssm['amyA'] <- 'missing or unknown'
 mssm['mayoDx'] <- 'not applicable'
+mssm['amyAny'] <- 'missing or unknown'
+mssm['bScore'] <- 'missing or unknown'
+mssm['reag'] <- 'missing or unknown'
+mssm['ADoutcome'] <- 'missing or unknown'
+
 
 #get rid of unnecessary columns
 mssm$species<-NULL
@@ -138,6 +193,52 @@ harmonized_mssm1 <- mssm %>%
   )
 
 
+harmonized_mssm1$amyAny[is.na(harmonized_mssm1$amyAny)] <- 'missing or unknown'
+harmonized_mssm1$amyAny[harmonized_mssm1$amyCerad == 'missing or unknown'] <- 'missing or unknown'
+harmonized_mssm1$amyAny[harmonized_mssm1$amyCerad == 'None/No AD/C0'] <- 0
+harmonized_mssm1$amyAny[harmonized_mssm1$amyCerad == 'Sparse/Possible/C1' | harmonized_mssm1$amyCerad == 'Moderate/Probable/C2' | harmonized_mssm1$amyCerad == 'Frequent/Definite/C3'] <- 1
+
+#bScore (grouped Braak variable)
+harmonized_mssm1$bScore[harmonized_mssm1$Braak == 'None'] <- 'None'
+harmonized_mssm1$bScore[harmonized_mssm1$Braak == 'Stage I' | harmonized_mssm1$Braak == 'Stage II'] <- 'Braak Stage I-II'
+harmonized_mssm1$bScore[harmonized_mssm1$Braak == 'Stage III' | harmonized_mssm1$Braak == 'Stage IV'] <- 'Braak Stage III-IV'
+harmonized_mssm1$bScore[harmonized_mssm1$Braak == 'Stage V' | harmonized_mssm1$Braak == 'Stage VI'] <- 'Braak Stage V-VI'
+harmonized_mssm1$bScore[harmonized_mssm1$Braak == 'missing or unknown'] <- 'missing or unknown'
+harmonized_mssm1$bScore[is.na(harmonized_mssm1$bScore)] <- 'missing or unknown'
+
+#reag (NIA Reagan, per backtranslated Rush thresholds)
+#individuals missing either amyCerad or Braak will be missing this variable
+harmonized_mssm1$reag[harmonized_mssm1$amyCerad == 'Frequent/Definite/C3' & (harmonized_mssm1$Braak == 'Stage V' | harmonized_mssm1$Braak == 'Stage VI')] <- 'High Likelihood'
+harmonized_mssm1$reag[harmonized_mssm1$amyCerad == 'Frequent/Definite/C3' & (harmonized_mssm1$Braak == 'Stage I' | harmonized_mssm1$Braak == 'Stage II' | harmonized_mssm1$Braak == 'Stage III' | harmonized_mssm1$Braak == 'Stage IV')] <- 'Intermediate Likelihood'
+harmonized_mssm1$reag[harmonized_mssm1$amyCerad == 'Moderate/Probable/C2' & (harmonized_mssm1$Braak == 'Stage III' | harmonized_mssm1$Braak == 'Stage IV' | harmonized_mssm1$Braak == 'Stage V' | harmonized_mssm1$Braak == 'Stage VI')] <- 'Intermediate Likelihood'
+harmonized_mssm1$reag[harmonized_mssm1$amyCerad == 'Sparse/Possible/C1' & (harmonized_mssm1$Braak == 'None' | harmonized_mssm1$Braak == 'Stage I' | harmonized_mssm1$Braak == 'Stage II' | harmonized_mssm1$Braak == 'Stage III' | harmonized_mssm1$Braak == 'Stage IV' | harmonized_mssm1$Braak == 'Stage V')] <- 'Low Likelihood'
+harmonized_mssm1$reag[harmonized_mssm1$amyCerad == 'Moderate/Probable/C2' & (harmonized_mssm1$Braak == 'None' | harmonized_mssm1$Braak == 'Stage I' | harmonized_mssm1$Braak == 'Stage II')] <- 'Low Likelihood'
+harmonized_mssm1$reag[harmonized_mssm1$amyCerad == 'None/No AD/C0' & (harmonized_mssm1$Braak == 'Stage I' | harmonized_mssm1$Braak == 'Stage II' | harmonized_mssm1$Braak == 'Stage III' | harmonized_mssm1$Braak == 'Stage IV' | harmonized_mssm1$Braak == 'Stage VI')] <- 'Low Likelihood'
+harmonized_mssm1$reag[harmonized_mssm1$amyCerad == 'Frequent/Definite/C3' & harmonized_mssm1$Braak == 'None'] <- 'Low Likelihood'
+harmonized_mssm1$reag[harmonized_mssm1$amyCerad == 'None/No AD/C0' & harmonized_mssm1$Braak == 'None'] <- 'No AD'
+harmonized_mssm1$reag[harmonized_mssm1$amyCerad == 'missing or unknown' | harmonized_mssm1$Braak == 'missing or unknown'] <- 'missing or unknown'
+table(harmonized_mssm1$reag)
+
+#AD outcome (derived outcome)
+#non-Mayo individuals missing cerad or braak will be missing or unknown
+harmonized_mssm1$ADoutcome <- 'Other'
+harmonized_mssm1$ADoutcome[harmonized_mssm1$amyCerad == 'missing or unknown'] <- 'missing or unknown'
+harmonized_mssm1$ADoutcome[harmonized_mssm1$Braak == 'missing or unknown'] <- 'missing or unknown'
+harmonized_mssm1$ADoutcome[(harmonized_mssm1$amyCerad == 'Frequent/Definite/C3' | harmonized_mssm1$amyCerad == 'Moderate/Probable/C2') & (harmonized_mssm1$Braak == 'Stage IV' | harmonized_mssm1$Braak == 'Stage V' | harmonized_mssm1$Braak == 'Stage VI')] <- 'AD'
+harmonized_mssm1$ADoutcome[(harmonized_mssm1$amyCerad == 'None/No AD/C0' | harmonized_mssm1$amyCerad == 'Sparse/Possible/C1') & (harmonized_mssm1$Braak == 'None' |harmonized_mssm1$Braak == 'Stage I' | harmonized_mssm1$Braak == 'Stage II' | harmonized_mssm1$Braak == 'Stage III')] <- 'Control'
+
+#change the order of the columns to match the Diverse Cohorts metadata schema
+harmonized_mssm1 <- harmonized_mssm1[,c("individualID", "dataContributionGroup", "cohort", "sex", "race", "isHispanic", "ageDeath",
+                                        "PMI", "apoeGenotype", "amyThal", "amyA", "amyCerad",  "Braak", "mayoDx", "amyAny", "bScore", "reag", "ADoutcome")]
+
+#save file:
+write.csv(harmonized_mssm1, file="MSBB_clinical_harmonized_to_DivCohorts.csv", row.names=FALSE)
+file <- synapser::File(path="MSBB_clinical_harmonized_to_DivCohorts.csv", parentId='syn61843440')
+file <- synapser::synStore(file)
+
+
+
+
 
 
 ##############. MAYO harmonization changes
@@ -150,8 +251,14 @@ names(mayo)[names(mayo) == 'Thal'] <- 'amyThal'
 mayo['dataContributionGroup'] <- 'Mayo'
 mayo['isHispanic'] <- 'missing or unknown'
 mayo['cohort'] <- 'Mayo Clinic'
-mayo['amyA'] <- NA
+mayo['amyA'] <- 'missing or unknown'
 mayo['amyCerad'] <- 'missing or unknown'
+mayo['amyA'] <- 'missing or unknown'
+mayo['amyAny'] <- 'missing or unknown'
+mayo['bScore'] <- 'missing or unknown'
+mayo['reag'] <- 'missing or unknown'
+mayo['ADoutcome'] <- 'missing or unknown'
+
 
 #get rid of unnecessary columns
 mayo$individualIdSource<-NULL
@@ -201,18 +308,24 @@ harmonized_mayo1 <- mayo %>%
                             TRUE ~ mayoDx)
   )
 
+#bScore (grouped Braak variable)
+harmonized_mayo1$bScore[harmonized_mayo1$Braak == 'None'] <- 'None'
+harmonized_mayo1$bScore[harmonized_mayo1$Braak == 'Stage I' | harmonized_mayo1$Braak == 'Stage II'] <- 'Braak Stage I-II'
+harmonized_mayo1$bScore[harmonized_mayo1$Braak == 'Stage III' | harmonized_mayo1$Braak == 'Stage IV'] <- 'Braak Stage III-IV'
+harmonized_mayo1$bScore[harmonized_mayo1$Braak == 'Stage V' | harmonized_mayo1$Braak == 'Stage VI'] <- 'Braak Stage V-VI'
+harmonized_mayo1$bScore[harmonized_mayo1$Braak == 'missing or unknown'] <- 'missing or unknown'
+harmonized_mayo1$bScore[is.na(harmonized_mayo1$bScore)] <- 'missing or unknown'
 
-#save files:
-write.csv(harmonized_rosmap1, file="ROSMAP_individual_harmonized.csv", row.names=FALSE)
-file <- synapser::File(path="ROSMAP_clinical_harmonized.csv", parentId='')
-file <- synapser::synStore(file)
+#AD outcome (derived outcome) for mayo is the mayoDx
+harmonized_mayo1$ADoutcome <- harmonized_mayo1$mayoDx
 
-write.csv(harmonized_mayo1, file="MAYO_individual_harmonized.csv", row.names=FALSE)
-file <- synapser::File(path="MAYO_clinical_harmonized.csv", parentId='')
-file <- synapser::synStore(file)
+#change the order of the columns to match the Diverse Cohorts metadata schema
+harmonized_mayo1 <- harmonized_mayo1[,c("individualID", "dataContributionGroup", "cohort", "sex", "race", "isHispanic", "ageDeath",
+                                        "PMI", "apoeGenotype", "amyThal", "amyA", "amyCerad",  "Braak", "mayoDx", "amyAny", "bScore", "reag", "ADoutcome")]
 
-write.csv(harmonized_mssm, file="MSBB_individual_harmonized.csv", row.names=FALSE)
-file <- synapser::File(path="MSBB_clinical_harmonized.csv", parentId='')
+#save file:
+write.csv(harmonized_mayo1, file="MAYO_clinical_harmonized_to_DivCohorts.csv", row.names=FALSE)
+file <- synapser::File(path="MAYO_clinical_harmonized_to_DivCohorts.csv", parentId='syn61843440')
 file <- synapser::synStore(file)
 
 
